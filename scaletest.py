@@ -53,18 +53,21 @@ def launch(hostname,network):
     
     security_group_id = '6916caf3-35df-40c8-a389-6ee16ec42f09'
 
-    _base_info = {}
-    _base_info['hostname'] = hostname
-    _base_info['primary_port'] = neutronlib.create_port(network,hostname+"_MGMT",security_groups=[security_group_id])
-    _base_info['primary_address'] = neutronlib.get_fixedip_from_port(_base_info['primary_port'])
+    try:
+        _base_info = {}
+        _base_info['hostname'] = hostname
+        _base_info['primary_port'] = neutronlib.create_port(network,hostname+"_MGMT",security_groups=[security_group_id])
+        _base_info['primary_address'] = neutronlib.get_fixedip_from_port(_base_info['primary_port'])
 
-    # Boot the instance
-    print "Launching instance... IP address is %s" % _base_info['primary_address']
-    ports = {'mgmt':_base_info['primary_port']}
-
-    server,boot_start = novalib.boot_server(hostname,ports)
-
-    return _base_info['primary_address'],server,boot_start
+        # Boot the instance
+        print "Launching instance... IP address is %s" % _base_info['primary_address']
+        ports = {'mgmt':_base_info['primary_port']}
+        server,boot_start = novalib.boot_server(hostname,ports)
+   
+        return _base_info['primary_address'],server,boot_start
+    except Exception:
+        error = Fore.RED + str(sys.exc_info()[1]) + Style.RESET_ALL
+        print "ERROR: %s" % error
 
 if __name__ == '__main__':
     ping = Pinger()
@@ -75,9 +78,13 @@ if __name__ == '__main__':
     build_threshold_high = 20.0
 
     for i in range(int(sys.argv[1])):    
-        # Boot an instance. The IP will be returned. Append the host array and start the ping test
-        host_addr,server,build_start = launch(novalib.random_server_name(),sys.argv[2])
-        #ping.hosts.insert(0,host_addr)
+        # Boot an instance. The IP will be returned.
+        try:
+            host_addr,server,build_start = launch(novalib.random_server_name(),sys.argv[2])
+        except:
+            # If there is any kind of exception, just break out
+            break
+
         ip = host_addr
 
         # Check to see if VM state is ACTIVE. Start ping
@@ -86,8 +93,6 @@ if __name__ == '__main__':
         status = novalib.check_status(server.id)
         while not status == "ACTIVE":
 #            print "DEBUG: Current status: %s +%s" % (status,round(time.time() - build_start,2))
-#            time.sleep(.25)
-#            print "DEBUG: Checking status..."
             status = novalib.check_status(server.id)
 
         build_end = time.time()
