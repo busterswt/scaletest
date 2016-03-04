@@ -1,34 +1,26 @@
 import requests, json, sys
-from pprint import pprint
-#from neutronclient.v2_0 import client
-#from prettytable import PrettyTable
-from library.neutron import create_port,create_network,get_fixedip_from_port,add_address_pair,get_macaddr_from_port
-from library.neutron import get_gateway_from_port,get_netmask_from_subnet,create_subnet
-from library.config import generate_base_config,generate_failover_config
+from library.neutron import create_port,get_fixedip_from_port
 from library.nova import boot_server,random_server_name
 
-network_id = 'b415ae07-97fb-4515-b03e-0f9bed2267b2'
-image_id = '3e173a82-64a8-4954-a992-34eebf7ad023'
+network_id = '276140a7-d6c6-47b2-a48e-40b25cda10d3'
+image_id = 'f9cffd1e-b07f-42d0-9595-857bbd59cc26'
 flavor_id = '1'
 
 def main(hostname,network):
 
-    #
-    # Create management interface and base configuration
+    security_group_id = '6916caf3-35df-40c8-a389-6ee16ec42f09'
 
     _base_info = {}
     _base_info['hostname'] = hostname
-    _base_info['primary_port'] = create_port(network,hostname+"_MGMT")
+    _base_info['primary_port'] = create_port(network,hostname+"_MGMT",security_groups=[security_group_id])
     _base_info['primary_address'] = get_fixedip_from_port(_base_info['primary_port'])
 
-    # Boot the primary ASA
+    # Boot the instance
     print "Launching instance... IP address is %s" % _base_info['primary_address']
     ports = {'mgmt':_base_info['primary_port']}
-    server = boot_server(hostname,ports)
 
-    return _base_info['primary_address'],server
+    server,boot_start = boot_server(hostname,ports)
 
-if __name__ == "__main__":
-        hostname = random_server_name()
-        main(hostname,network=network_id)
+    return _base_info['primary_address'],server,boot_start
+
 

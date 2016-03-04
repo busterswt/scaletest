@@ -20,7 +20,7 @@ class Pinger(object):
     # Lock object to keep track the threads in loops, where it can potentially be race conditions.
     lock = threading.Lock()
 
-    def ping(self, ip):
+    def ping(self, ip, build_duration):
         # Use the system ping command with count of 1 and wait time of 1.
 #        start_time = time.localtime()
         start_time = time.time()
@@ -35,10 +35,11 @@ class Pinger(object):
                 duration = round(end_time - start_time,4)
 #                duration = (time.mktime(end_time) - time.mktime(start_time)) 
                 # Write to file
-                line = ip, duration
+                line = ip, build_duration, duration
 #                line = ip, start_time, end_time, duration
                 target.write(str(line))
                 target.write("\n")
+#                print("Build Duration: %s") % build_duration
                 print("Ping OK! Time: %s seconds. Moving on...") % duration
 
                 return ret == 0
@@ -59,24 +60,24 @@ class Pinger(object):
 
         return ip
 
-    def dequeue(self):
+    def dequeue(self,build_duration):
         while True:
             ip = self.pop_queue()
 
             if not ip:
                 return None
 
-            result = 'alive' if self.ping(ip) else 'dead'
+            result = 'alive' if self.ping(ip,build_duration) else 'dead'
             self.status[result].append(ip)
 
-    def start(self):
+    def start(self,build_duration):
         threads = []
 
         for i in range(self.thread_count):
             # Create self.thread_count number of threads that together will
             # cooperate removing every ip in the list. Each thread will do the
             # job as fast as it can.
-            t = threading.Thread(target=self.dequeue)
+            t = threading.Thread(target=self.dequeue(build_duration))
             t.start()
             threads.append(t)
 
@@ -92,7 +93,8 @@ if __name__ == '__main__':
 
     for i in range(int(sys.argv[1])):    
         # Boot an instance. The IP will be returned. Append the host array and start the ping test
-        host_addr,server = myping.main(random_server_name(),'310dd31d-23a4-4b57-981a-3abb20e3ac5e')
+        build_start = time.time()
+        host_addr,server = myping.main(random_server_name(),sys.argv[2])
         ping.hosts.insert(0,host_addr)
 
         # Check to see if VM state is ACTIVE. Start ping
@@ -102,8 +104,10 @@ if __name__ == '__main__':
         while not status == "ACTIVE":
             time.sleep(0.5)
             status = check_status(server)
-        print "Instance status now ACTIVE, beginning PING"
-        ping.start()
+        build_end = time.time()
+        build_duration = round(build_end - build_start,4)
+        print "Instance status now ACTIVE. Build time: %s seconds. Beginning PING" % build_duration
+        ping.start(build_duration)
 
     # Close the file
     target.close()
