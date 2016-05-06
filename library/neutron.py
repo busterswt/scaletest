@@ -15,6 +15,23 @@ def create_network(name,network_type):
     response = neutron.create_network(body=body_value)
     return response["network"]["id"]
 
+def list_floatingips_by_router(router_id):
+    floatingips = neutron.list_floatingips(router_id)
+
+    return floatingips
+
+def create_floatingip(network_id,port_id=None):
+    
+    body_value = {
+        "floatingip": {
+            "floating_network_id": network_id,
+            "port_id": port_id
+        }
+    }
+
+    response = neutron.create_floatingip(body=body_value)
+    return response["floatingip"]["floating_ip_address"]
+
 def create_subnet(network_id,cidr):
 
     body_value = {
